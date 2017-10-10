@@ -29,8 +29,7 @@ def block(inputs, filters, name, dropout, is_training):
 
     ix = inputs.shape[2].value
     iy = ix
-    print(ix)
-    print(iy)
+
     channels = filters
     v = tf.slice(conv3, (0, 0, 0, 0), (1, -1, -1, -1))
     v = tf.reshape(v, (iy, ix, channels))
@@ -38,9 +37,19 @@ def block(inputs, filters, name, dropout, is_training):
     iy += 4
     v = tf.image.resize_image_with_crop_or_pad(v, iy, ix)
     cy = math.sqrt(channels)
-    cy = (int)(cy)
+
+    iswhole = cy.is_integer()
+    if not iswhole:
+        cy = (int)(math.ceil(cy))
+    else:
+        cy = (int)(cy)
+
     cx = cy
-    print(cx)
+
+    if not iswhole:
+        pad = (cy**2) - channels
+        v = tf.pad(v, [[0, 0], [0, 0], [0, pad]])
+
     v = tf.reshape(v, (iy, ix, cy, cx))
     v = tf.transpose(v, (2, 0, 3, 1))
     v = tf.reshape(v, (1, cy * iy, cx * ix, 1))
@@ -52,13 +61,23 @@ def block(inputs, filters, name, dropout, is_training):
 
 def architecture(inputs, filters_size, filter_names, dropouts, output_size, is_training):
     with tf.variable_scope('CovNet'):
-
         inputs = tf.layers.batch_normalization(inputs, name="batch_normalization")
+
+        ix = inputs.shape[2].value
+        iy = ix
+
+        v = tf.slice(inputs, (0, 0, 0, 0), (1, -1, -1, -1))
+        v = tf.reshape(v, (1, iy, ix, 3))
+        ix += 4
+        iy += 4
+        v = tf.image.resize_image_with_crop_or_pad(v, iy, ix)
+        cy = 0
+        cx = cy
+        tf.summary.image("image_orig", v)
 
         for i, filter_size in enumerate(filters_size):
             with tf.name_scope("conv-maxpool-{}s".format(filter_names[i])):
                 inputs = block(inputs, filter_size, filter_names[i], dropouts[i], is_training)
-
 
         with tf.name_scope("conv-dense"):
             inputs = tf.reshape(inputs, [-1, 8 * 8 * 512])
@@ -108,7 +127,7 @@ def model_fn(features, labels, mode, params):
     dropouts = [0.1, 0.2, 0.3, 0.5, 0.5]
     output_size = labels.shape[1]
     is_training = mode == ModeKeys.TRAIN
-    logits, summaries = architecture(features, filter_size, filter_names, dropouts, output_size, is_training)
+    logits = architecture(features, filter_size, filter_names, dropouts, output_size, is_training)
     predictions = tf.argmax(logits, axis=-1)
     loss = None
     train_op = None
