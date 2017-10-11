@@ -5,13 +5,13 @@ from pitycnn.inputs import Inputs
 from pitycnn.model import model_fn
 
 
-def generate_experiment_fn(train_images, train_labels, valid_images, valid_labels, n_classes):
+def generate_experiment_fn(train_images, train_labels, valid_images, valid_labels, n_classes, batch_size = 10):
     def experiment_fn(run_config, params):
         run_config = run_config.replace(save_checkpoints_steps=params.min_eval_frequency)
         estimator = get_estimator(run_config, params)
 
-        train_inputs = Inputs(train_images, train_labels, n_classes)
-        valid_inputs = Inputs(valid_images, valid_labels, n_classes, name="valid")
+        train_inputs = Inputs(train_images, train_labels, n_classes, batch_size=batch_size, shuffle=True)
+        valid_inputs = Inputs(valid_images, valid_labels, n_classes, name="valid", batch_size=batch_size)
 
         with tf.device('/cpu:0'):
             train_input_fn, train_input_hook = train_inputs.generate_input_fn()

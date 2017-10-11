@@ -20,11 +20,9 @@ class Inputs:
         def _input_fn():
             with name_scope(self.name):
                 dataset, images, labls = self.__convert()
-                iterator = Iterator.from_structure(dataset.output_types,
-                                                   dataset.output_shapes)
+                iterator = Iterator.from_dataset(dataset)
                 next_element = iterator.get_next()
 
-                # create two initialization ops to switch between the datasets
                 training_init_op = iterator.make_initializer(dataset)
                 self.iterator_initializer_hook.iterator_initializer_func = lambda sess: sess.run(training_init_op)
 
@@ -53,5 +51,6 @@ class Inputs:
 
         if self.shuffle:
             data = data.shuffle(self.buffer_size)
+
         data = data.batch(self.batch_size)
         return data, imgs, labels

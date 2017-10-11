@@ -6,9 +6,10 @@ from pitycnn.experiment import generate_experiment_fn
 from pitycnn.prep import prepare_data
 
 
-def main(files, gpu_memory_fraction=0.8, min_eval_frequency=500, train_steps=5000, n_classes=10,
-         learning_rate=0.01,
-         job_dir='model'):
+def main(files, gpu_memory_fraction=0.8, min_eval_frequency=500, train_steps=5000, learning_rate=0.01,
+         job_dir='model', batch_size=10):
+    train_images, train_labels, valid_images, valid_labels, n_classes = prepare_data(files)
+
     params = HParams(
         learning_rate=learning_rate,
         n_classes=n_classes,
@@ -16,9 +17,8 @@ def main(files, gpu_memory_fraction=0.8, min_eval_frequency=500, train_steps=500
         min_eval_frequency=min_eval_frequency
     )
 
-    train_images, train_labels, valid_images, valid_labels, n_classes = prepare_data(files)
-
-    experiment_fn = generate_experiment_fn(train_images, train_labels, valid_images, valid_labels, n_classes)
+    experiment_fn = generate_experiment_fn(train_images, train_labels, valid_images, valid_labels, n_classes,
+                                           batch_size=batch_size)
 
     run_config = RunConfig(gpu_memory_fraction=gpu_memory_fraction)
     run_config = run_config.replace(model_dir=job_dir)

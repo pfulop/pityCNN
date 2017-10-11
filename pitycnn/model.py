@@ -4,6 +4,7 @@ from tensorflow.contrib.learn import ModeKeys
 
 
 def block(inputs, filters, name, dropout, is_training):
+
     conv1 = tf.layers.conv2d(inputs,
                              filters,
                              4,
@@ -71,8 +72,6 @@ def architecture(inputs, filters_size, filter_names, dropouts, output_size, is_t
         ix += 4
         iy += 4
         v = tf.image.resize_image_with_crop_or_pad(v, iy, ix)
-        cy = 0
-        cx = cy
         tf.summary.image("image_orig", v)
 
         for i, filter_size in enumerate(filters_size):
@@ -115,7 +114,7 @@ def get_train_op_fn(loss, params):
 def get_eval_metric_ops(labels, predictions):
     return {
         'Accuracy': tf.metrics.accuracy(
-            labels=tf.argmax(labels, 0),
+            labels=tf.argmax(labels, axis=-1),
             predictions=predictions,
             name='accuracy')
     }
