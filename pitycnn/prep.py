@@ -6,8 +6,8 @@ def prepare_data(data_path):
     #     DATA_HOME = '/Users/fulop/Downloads/dogbreed/'
     #     DATA_HOME = '/run/media/backman/yay/dogbreed/'
     CSV = data_path + 'labels.csv'
-    TRAIN_PATH = data_path + 'sample/train/'
-    VALID_PATH = data_path + 'sample/valid/'
+    TRAIN_PATH = data_path + 'train/'
+    VALID_PATH = data_path + 'valid/'
     dfile = pd.read_csv(CSV)
     dfile['breed'] = pd.Categorical(dfile['breed'])
     n_classes = len(dfile.breed.unique())

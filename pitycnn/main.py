@@ -6,8 +6,8 @@ from pitycnn.experiment import generate_experiment_fn
 from pitycnn.prep import prepare_data
 
 
-def main(files, gpu_memory_fraction=0.8, min_eval_frequency=500, train_steps=5000, learning_rate=0.001,
-         job_dir='model', batch_size=10):
+def main(files, gpu_memory_fraction=1, min_eval_frequency=500, train_steps=5000, learning_rate=0.001,
+         job_dir='model', batch_size=128):
     train_images, train_labels, valid_images, valid_labels, n_classes = prepare_data(files)
 
     params = HParams(
