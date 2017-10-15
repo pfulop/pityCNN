@@ -31,6 +31,7 @@ def generate_experiment_fn(train_images, train_labels, valid_images, valid_label
         return experiment
 
     def get_estimator(run_config, params):
+        print(run_config)
         return tf.estimator.Estimator(
             model_fn=model_fn,  # First-class function
             params=params,  # HParams
