@@ -1,6 +1,3 @@
-from tensorflow.contrib.learn.python.learn import learn_runner
-from tensorflow.contrib.learn import RunConfig
-from tensorflow.contrib.training import HParams
 import tensorflow as tf
 import math
 import numpy as np
@@ -8,7 +5,6 @@ import datetime
 from os import path
 
 from pitycnn.inputs import Inputs
-from pitycnn.experiment import generate_experiment_fn
 from pitycnn.prep import prepare_data
 
 image_width = 234
@@ -26,6 +22,9 @@ class PityCnn:
         self.display_step = display_step
         self.__prepare_data()
         self.__create_model()
+        gpu_options = tf.GPUOptions(allow_growth=True)
+        self.config = tf.ConfigProto(gpu_options=gpu_options)
+        self.run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 
     def load_checkpoint(self, last_file):
         self.last_file = last_file
@@ -37,7 +36,7 @@ class PityCnn:
     def train(self, num_epochs):
         next_train = self.iterator_train.get_next()
         next_valid = self.iterator_valid.get_next()
-        with tf.Session() as sess:
+        with tf.Session(config=self.config) as sess:
 
             tf.global_variables_initializer().run()
             if self.last_file:
@@ -53,7 +52,7 @@ class PityCnn:
                     batch_data, batch_labels = sess.run(next_train)
                     feed_dict = {self.features: batch_data, self.labels: batch_labels}
                     _, l, predictions = sess.run([self.optimizer, self.loss, self.train_prediction],
-                                                 feed_dict=feed_dict)
+                                                 feed_dict=feed_dict, options=self.run_options)
 
                     if step % self.display_step == 0:
                         s = sess.run(self.merged_summary, feed_dict={self.labels: batch_labels,
@@ -112,19 +111,19 @@ class PityCnn:
 
         conv1 = tf.layers.conv2d(inputs,
                                  filters,
-                                 4,
+                                 3,
                                  padding="same",
                                  activation=tf.nn.relu,
                                  name="conv{}_1".format(name))
         conv2 = tf.layers.conv2d(conv1,
                                  filters,
-                                 4,
+                                 3,
                                  padding="same",
                                  activation=tf.nn.relu,
                                  name="conv{}_2".format(name))
         conv3 = tf.layers.conv2d(conv2,
                                  filters,
-                                 4,
+                                 3,
                                  padding="same",
                                  activation=tf.nn.relu,
                                  name="conv{}_3".format(name))
@@ -212,22 +211,3 @@ class PityCnn:
         self.writer = tf.summary.FileWriter(self.model_path)
         self.saver = tf.train.Saver()
 
-
-def main(files, gpu_memory_fraction=1, min_eval_frequency=500, train_steps=5000, learning_rate=0.001,
-         job_dir='model', batch_size=128):
-    train_images, train_labels, valid_images, valid_labels, n_classes = prepare_data(files)
-
-    params = HParams(
-        learning_rate=learning_rate,
-        n_classes=n_classes,
-        train_steps=train_steps,
-        min_eval_frequency=min_eval_frequency
-    )
-
-    experiment_fn = generate_experiment_fn(train_images, train_labels, valid_images, valid_labels, n_classes,
-                                           batch_size=batch_size)
-
-    run_config = RunConfig(gpu_memory_fraction=gpu_memory_fraction)
-    run_config = run_config.replace(model_dir=job_dir)
-
-    learn_runner.run(experiment_fn, run_config=run_config, schedule="train_and_evaluate", hparams=params)
