@@ -93,12 +93,12 @@ class PityCnn:
         self.n_classes = n_classes
 
     def __create_model(self):
-        self.is_training = tf.placeholder(tf.bool, shape=1)
+        self.is_training = tf.placeholder(tf.bool)
         self.features = tf.placeholder(tf.float32, shape=(None, image_width, image_height, image_depth),
                                        name="features")
         self.labels = tf.placeholder(tf.float32, shape=(None, self.n_classes), name="labels")
 
-        self.filter_size = [64, 128, 256, 512, 512]
+        self.filters_size = [64, 128, 256, 512, 512]
         self.filter_names = ['64', '128', '256', '512a', '512b']
         self.dropouts = [0.1, 0.2, 0.3, 0.5, 0.5]
         self.logits = self.__architecture()
