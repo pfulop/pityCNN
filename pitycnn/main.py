@@ -1,7 +1,7 @@
 import tensorflow as tf
 import math
 import numpy as np
-import datetime
+from datetime import datetime
 from os import path
 
 from pitycnn.inputs import Inputs
@@ -22,6 +22,7 @@ class PityCnn:
         self.display_step = display_step
         self.__prepare_data()
         self.__create_model()
+        self.__init_summary()
         gpu_options = tf.GPUOptions(allow_growth=True)
         self.config = tf.ConfigProto(gpu_options=gpu_options)
         self.run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -50,13 +51,14 @@ class PityCnn:
 
                 for step in range(self.train_batches_per_epoch):
                     batch_data, batch_labels = sess.run(next_train)
-                    feed_dict = {self.features: batch_data, self.labels: batch_labels}
-                    _, l, predictions = sess.run([self.optimizer, self.loss, self.train_prediction],
+                    feed_dict = {self.features: batch_data, self.labels: batch_labels, self.is_training: True}
+                    _, l, predictions = sess.run([self.optimizer, self.loss, self.predictions],
                                                  feed_dict=feed_dict, options=self.run_options)
 
                     if step % self.display_step == 0:
                         s = sess.run(self.merged_summary, feed_dict={self.labels: batch_labels,
                                                                      self.logits: predictions,
+                                                                     self.features: batch_data,
                                                                      self.is_training: True})
 
                         self.writer.add_summary(s, epoch * self.train_batches_per_epoch + step)
@@ -67,7 +69,7 @@ class PityCnn:
                 for _ in range(self.valid_batches_per_epoch):
                     batch_data, batch_labels = sess.run(next_valid)
                     acc = sess.run(self.accuracy, feed_dict={self.features: batch_data,
-                                                             self.labels: batch_labels, self.is_training: True})
+                                                             self.labels: batch_labels, self.is_training: False})
                     valid_acc += acc
                     valid_count += 1
                 valid_acc /= valid_count
@@ -88,7 +90,7 @@ class PityCnn:
             self.iterator_valid = valid_inputs.generate_iterator()
 
         self.train_batches_per_epoch = int(np.floor(train_inputs.size / self.batch_size))
-        self.valid_batches_per_epoch = int(np.floor(train_inputs.size / self.batch_size))
+        self.valid_batches_per_epoch = int(np.floor(valid_inputs.size / self.batch_size))
         self.n_classes = n_classes
 
     def __create_model(self):
@@ -104,7 +106,7 @@ class PityCnn:
         self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits, labels=self.labels))
         self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
         self.predictions = tf.nn.softmax(self.logits)
-        correct_pred = tf.equal(tf.argmax(self.logits, 1), tf.argmax(self.features, 1))
+        correct_pred = tf.equal(tf.argmax(self.logits, 1), tf.argmax(self.labels, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
     def __block(self, inputs, filters, name, dropout):
@@ -182,7 +184,7 @@ class PityCnn:
                     inputs = self.__block(inputs, filter_size, self.filter_names[i], self.dropouts[i])
 
             with tf.name_scope("conv-dense"):
-                inputs = tf.reshape(inputs, [-1, 8 * 8 * 512])
+                inputs = tf.reshape(inputs, [-1, 7 * 7 * 512])
                 dense1 = tf.layers.dense(
                     inputs,
                     4096,
