@@ -26,6 +26,7 @@ class PityCnn:
         gpu_options = tf.GPUOptions(allow_growth=True)
         self.config = tf.ConfigProto(gpu_options=gpu_options)
         self.run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        self.run_metadata = tf.RunMetadata()
 
     def load_checkpoint(self, last_file):
         self.last_file = last_file
@@ -53,7 +54,7 @@ class PityCnn:
                     batch_data, batch_labels = sess.run(next_train)
                     feed_dict = {self.features: batch_data, self.labels: batch_labels, self.is_training: True}
                     _, l, predictions = sess.run([self.optimizer, self.loss, self.predictions],
-                                                 feed_dict=feed_dict, options=self.run_options)
+                                                 feed_dict=feed_dict)
 
                     if step % self.display_step == 0:
                         s = sess.run(self.merged_summary, feed_dict={self.labels: batch_labels,
@@ -69,12 +70,16 @@ class PityCnn:
                 for _ in range(self.valid_batches_per_epoch):
                     batch_data, batch_labels = sess.run(next_valid)
                     acc = sess.run(self.accuracy, feed_dict={self.features: batch_data,
-                                                             self.labels: batch_labels, self.is_training: False})
+                                                             self.labels: batch_labels, self.is_training: False},
+                                   options=self.run_options,
+                                   run_metadata=self.run_metadata)
                     valid_acc += acc
                     valid_count += 1
                 valid_acc /= valid_count
                 print("{} Validation Accuracy = {:.4f}".format(datetime.now(),
                                                                valid_acc))
+                self.writer.add_run_metadata(self.run_metadata, "step{}".format(step))
+
                 self.last_file = 'model_epoch{}.ckpt'.format(epoch + 1)
                 checkpoint_name = path.join(self.model_path, self.last_file)
                 self.saver.save(sess, checkpoint_name)
@@ -212,4 +217,3 @@ class PityCnn:
         self.merged_summary = tf.summary.merge_all()
         self.writer = tf.summary.FileWriter(self.model_path)
         self.saver = tf.train.Saver()
-
